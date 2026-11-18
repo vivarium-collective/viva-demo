@@ -20,7 +20,7 @@ class Transcription(Process):
         'binding_rate': 'float', # global RNAP binding rate
     }
 
-    def initialize(self):
+    def initialize(self, config):
         self.genes = self.config['genes']
         self.elongation_rate = self.config['elongation_rate']
         self.total_rate = sum([gene['rate'] for gene in self.genes.values()])
@@ -42,13 +42,13 @@ class Transcription(Process):
 
     def inputs(self):
         return {
-            'rnap': 'list[rnap]',
+            'rnap': 'overwrite[list[rnap]]',
         }
 
-    def output(self):
+    def outputs(self):
         return {
-            'rnap' : 'list[rnap]',
-            'mRNA' : 'map[integer]',
+            'rnap' : 'overwrite[list[rnap]]',
+            'mrna' : 'map[integer]',
         }
 
     def update(self, state, interval):
@@ -83,24 +83,23 @@ class Transcription(Process):
         free_count = len(free_rnap)
 
         # Calculate the binding events
-        binding_count = self.binding_rate * free_count * interval
+        binding_count = int(self.binding_rate * free_count * interval)
 
         # Update free RNAPs
         for free in range(free_count - binding_count):
             rnap.append({'free': True})
 
         # Update bound RNAPs
+        bound_genes = []
         for binding in range(binding_count):
             gene_key = self.select_gene()
-            rnap.append({'free': False, 'gene': gene_key, 'position': 0})
+            if not gene_key in bound_genes:
+                rnap.append({'free': False, 'gene': gene_key, 'position': 0})
+                bound_genes.append(gene_key)
+            else:
+                rnap.append({'free': True})
 
         return {
             'rnap': rnap,
-            'mRNA': mRNA,
+            'mrna': mRNA,
         }
-
-
-
-
-
-
